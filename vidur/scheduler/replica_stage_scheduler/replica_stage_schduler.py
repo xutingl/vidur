@@ -2,6 +2,7 @@ from typing import Tuple
 
 from vidur.entities import Batch, BatchStage, ExecutionTime
 from vidur.execution_time_predictor import BaseExecutionTimePredictor
+import random
 
 
 class ReplicaStageScheduler:
@@ -32,6 +33,16 @@ class ReplicaStageScheduler:
 
     def on_stage_end(self) -> None:
         self._is_busy = False
+    
+    """
+    Returns the fraction of layers that are skipped in the current stage
+    """
+    def get_fraction_skipped(self, num_layers_per_stage=4, skip_chance=0.5) -> float:
+        num_skipped_layers = 0
+        for i in range(num_layers_per_stage):
+            if random.random() < skip_chance:
+                num_skipped_layers += 1
+        return num_skipped_layers / num_layers_per_stage
 
     def on_schedule(self) -> Tuple[Batch, BatchStage, ExecutionTime]:
         if self._is_busy or not self._batch_queue:
@@ -42,6 +53,7 @@ class ReplicaStageScheduler:
         execution_time = self._execution_time_predictor.get_execution_time(
             batch,
             self._stage_id,
+            fraction_skipped=self.get_fraction_skipped(skip_chance=0.5)
         )
         total_execution_time = execution_time.total_time
         model_execution_time = execution_time.model_time
