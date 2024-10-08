@@ -44,7 +44,10 @@ class BaseExecutionTimePredictor(ABC):
                 self._get_tensor_parallel_communication_time(batch)
             )
         
-        if fraction_skipped > 0:
+        if False and (fraction_skipped > 0 or batch.exited):
+            batch.exited = True
+            if pipeline_stage == self._replica_config.num_pipeline_stages - 1: # Reset exited status at the end of iteration
+                batch.exited = False
             return ExecutionTime(
                 self._num_layers_per_pipeline_stage,
                 self._get_attention_rope_execution_time(batch) * (1 - fraction_skipped),

@@ -77,6 +77,8 @@ class Simulator:
 
         assert self._scheduler.is_empty() or self._terminate
 
+        print(self._scheduler.get_avg_queue_length())
+
         logger.info(f"Simulation ended at: {self._time}s")
 
     def _write_output(self) -> None:

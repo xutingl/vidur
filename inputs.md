@@ -35,9 +35,25 @@ python -m vidur.main  \
 --vllm_scheduler_config_batch_size_cap 128  \
 --vllm_scheduler_config_max_tokens_in_batch 2048
 
+## Test req=512
+python -m vidur.main  \
+--replica_config_device a100 \
+--replica_config_model_name meta-llama/Llama-2-7b-hf  \
+--cluster_config_num_replicas 1 \
+--replica_config_tensor_parallel_size 1 \
+--replica_config_num_pipeline_stages 8 \
+--request_generator_config_type synthetic \
+--length_generator_config_type trace \
+--interval_generator_config_type static \
+--trace_request_length_generator_config_max_tokens 2048 \
+--trace_request_length_generator_config_trace_file ./data/processed_traces/arxiv_summarization_stats_llama2_tokenizer_filtered_v2.csv \
+--synthetic_request_generator_config_num_requests 512  \
+--replica_scheduler_config_type vllm  \
+--vllm_scheduler_config_batch_size_cap 128  \
+--vllm_scheduler_config_max_tokens_in_batch 2048
 
 
-
+## Test TP (TP has bugs)
 python -m vidur.main  \
 --replica_config_device a100 \
 --replica_config_model_name meta-llama/Llama-2-7b-hf  \

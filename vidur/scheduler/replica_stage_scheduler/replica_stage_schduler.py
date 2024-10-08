@@ -19,6 +19,7 @@ class ReplicaStageScheduler:
         self._execution_time_predictor = execution_time_predictor
 
         self._batch_queue = []
+        self.queue_length_samples = [] # Store the length of current queue each time a batch is added
         self._is_busy = False
 
     @property
@@ -29,6 +30,7 @@ class ReplicaStageScheduler:
         return len(self._batch_queue) == 0
 
     def add_batch(self, batch: Batch) -> None:
+        self.queue_length_samples.append(len(self._batch_queue))
         self._batch_queue.append(batch)
 
     def on_stage_end(self) -> None:

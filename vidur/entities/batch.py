@@ -53,6 +53,9 @@ class Batch(BaseEntity):
         self._scheduled = False
         self._completed = False
 
+        # For Early Exit. If the batch early exited (set to True) at a layer(pipeline stage), it will skip the remaining layers(stages) for this iteration. It will be reset to False at the end of the iteration.
+        self.exited = False
+
     @property
     def replica_id(self) -> int:
         return self._replica_id

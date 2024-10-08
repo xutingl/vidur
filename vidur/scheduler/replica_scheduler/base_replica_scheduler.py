@@ -89,6 +89,12 @@ class BaseReplicaScheduler(ABC):
                 for stage_scheduler in self._replica_stage_schedulers.values()
             )
         )
+    
+    def get_avg_queue_length(self) -> dict:
+        return {
+            stage_id: sum(stage.queue_length_samples) / len(stage.queue_length_samples)
+            for stage_id, stage in self._replica_stage_schedulers.items()
+        }
 
     def _get_request_next_num_tokens(self, request: Request) -> int:
         assert not request.completed

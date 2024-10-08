@@ -36,6 +36,9 @@ class BaseGlobalScheduler(ABC):
             for replica_id, replica in replicas.items()
         }
         self._request_queue = []
+    
+    def get_avg_queue_length(self):
+        return self._replica_schedulers[0].get_avg_queue_length()
 
     def sort_requests(self) -> None:
         self._request_queue.sort(key=lambda request: request._arrived_at)
