@@ -60,6 +60,7 @@ class BaseReplicaScheduler(ABC):
                 stage_id,
                 stage_id == num_stages - 1,
                 execution_time_predictor,
+                num_stages=num_stages
             )
             for stage_id in range(num_stages)
         }

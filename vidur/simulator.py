@@ -2,6 +2,7 @@ import atexit
 import heapq
 import json
 from typing import List
+import os
 
 from vidur.config import SimulationConfig
 from vidur.entities import Cluster
@@ -77,7 +78,12 @@ class Simulator:
 
         assert self._scheduler.is_empty() or self._terminate
 
-        print(self._scheduler.get_avg_queue_length())
+        print("-----Queue length-----")
+        print(self._scheduler.get_avg_queue_length()) #[queue length]
+        queue_length_file = f"{self._config.metrics_config.output_dir}/plots/queue_length.json"
+        os.makedirs(os.path.dirname(queue_length_file), exist_ok=True)
+        with open(queue_length_file, "w") as f:
+            json.dump(self._scheduler.get_avg_queue_length(), f)
 
         logger.info(f"Simulation ended at: {self._time}s")
 

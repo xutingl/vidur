@@ -4,6 +4,7 @@ from abc import ABC
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import List, Optional
+from enum import Enum
 
 from vidur.config.base_poly_config import BasePolyConfig
 from vidur.config.device_sku_config import BaseDeviceSKUConfig
@@ -412,6 +413,10 @@ class MetricsConfig:
         default="simulator_output",
         metadata={"help": "Output directory."},
     )
+    output_data_folder: str = field(
+        default=f"{datetime.now().strftime('%Y-%m-%d_%H-%M-%S-%f')}",
+        metadata={"help": "Output data folder."},
+    )
     cache_dir: str = field(
         default="cache",
         metadata={"help": "Cache directory."},
@@ -419,7 +424,7 @@ class MetricsConfig:
 
     def __post_init__(self):
         self.output_dir = (
-            f"{self.output_dir}/{datetime.now().strftime('%Y-%m-%d_%H-%M-%S-%f')}"
+            f"{self.output_dir}/{self.output_data_folder}"
         )
         os.makedirs(self.output_dir, exist_ok=True)
 
@@ -489,6 +494,16 @@ class LORGlobalSchedulerConfig(BaseGlobalSchedulerConfig):
     def get_type():
         return GlobalSchedulerType.LOR
 
+class EarlyExitType(Enum):
+    """
+    0 - No EE: The model does not early exit.
+    1 - EE: The model early exits.
+    2 - MOD: The model early exits in a Mixture of Depth style (skip certain laters and continue)
+    """
+    NO_EE = 0
+    EE = 1
+    MOD = 2
+    
 
 @dataclass
 class BaseExecutionTimePredictorConfig(BasePolyConfig):
@@ -559,6 +574,10 @@ class BaseExecutionTimePredictorConfig(BasePolyConfig):
     skip_cpu_overhead_modeling: bool = field(
         default=True,
         metadata={"help": "Whether to skip CPU overhead modeling."},
+    )
+    early_exit_type: EarlyExitType = field(
+        default=0,
+        metadata={"help": "Whether the model early exits (0 - no early exit, 1 - early exit, 2 - MoD)"},
     )
 
 
@@ -654,8 +673,15 @@ class SimulationConfig(ABC):
         metadata={"help": "Metrics config."},
     )
 
+    early_exit_type: int = field(
+        default=0,
+        metadata={"help": "Whether the model early exits (0 - no early exit, 1 - early exit, 2 - MoD)"},
+    )
+
     def __post_init__(self):
         self.write_config_to_file()
+        self.early_exit_type: EarlyExitType = EarlyExitType(self.early_exit_type)
+        self.execution_time_predictor_config.early_exit_type = self.early_exit_type
 
     @classmethod
     def create_from_cli_args(cls):
