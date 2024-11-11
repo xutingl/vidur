@@ -2,8 +2,9 @@ from typing import Tuple
 
 from vidur.entities import Batch, BatchStage, ExecutionTime
 from vidur.execution_time_predictor import BaseExecutionTimePredictor
-from vidur.config import EarlyExitType
+from vidur.config import EarlyExitType, BaseReplicaSchedulerConfig
 import random
+import heapq
 
 
 class ReplicaStageScheduler:
@@ -13,12 +14,15 @@ class ReplicaStageScheduler:
         stage_id: int,
         is_last_stage: bool,
         execution_time_predictor: BaseExecutionTimePredictor,
+        replica_scheduler_config: BaseReplicaSchedulerConfig,
         num_stages: int=-1
     ) -> None:
         self._replica_id = replica_id
         self._stage_id = stage_id
         self._is_last_stage = is_last_stage
         self._execution_time_predictor = execution_time_predictor
+
+        self.enable_priority_queue = replica_scheduler_config.enable_priority_queue
 
         self._batch_queue = []
         self.queue_length_samples = [] # Store the length of current queue each time a batch is added
@@ -36,7 +40,11 @@ class ReplicaStageScheduler:
 
     def add_batch(self, batch: Batch) -> None:
         self.queue_length_samples.append(len(self._batch_queue))
-        self._batch_queue.append(batch)
+        if self.enable_priority_queue:
+            heapq.heappush(self._batch_queue, batch)
+        else:
+            self._batch_queue.append(batch)
+        
 
     def on_stage_end(self) -> None:
         self._is_busy = False
@@ -72,7 +80,11 @@ class ReplicaStageScheduler:
             return None, None, None
 
         self._is_busy = True
-        batch = self._batch_queue.pop(0)
+        if self.enable_priority_queue:
+            batch = heapq.heappop(self._batch_queue)
+        else:
+            batch = self._batch_queue.pop(0)
+
         fraction_skipped = 0
         if self.early_exit_type != 0:
             fraction_skipped = self.get_fraction_skipped(skip_chance=0.5)

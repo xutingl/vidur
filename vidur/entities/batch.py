@@ -53,8 +53,18 @@ class Batch(BaseEntity):
         self._scheduled = False
         self._completed = False
 
+        self._earliest_request_arrival_time = min(
+            [request.arrived_at for request in self._requests if not request.completed]
+        )
+
         # For Early Exit. If the batch early exited (set to True) at a layer(pipeline stage), it will skip the remaining layers(stages) for this iteration. It will be reset to False at the end of the iteration.
         self.exited = False
+    
+    def __lt__(self, other: "Batch"):
+        return self._earliest_request_arrival_time < other._earliest_request_arrival_time
+    
+    def __eq__(self, other: "Batch"):
+        return self._earliest_request_arrival_time == other._earliest_request_arrival_time
 
     @property
     def replica_id(self) -> int:
@@ -130,6 +140,13 @@ class Batch(BaseEntity):
 
         for request, num_tokens in zip(self._requests, self._num_tokens):
             request.on_batch_end(time, num_tokens)
+        
+        # Update earliest request arrival time: Completed request's arrival time is not considered
+        resuest_arrival_times = [request.arrived_at for request in self._requests if not request.completed]
+        if len(resuest_arrival_times) > 0:
+            self._earliest_request_arrival_time = min(resuest_arrival_times)
+        else:
+            self._earliest_request_arrival_time = time
 
     @property
     def preempted_requests(self) -> List[Request]:

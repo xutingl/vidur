@@ -39,6 +39,7 @@ class Simulator:
         self._request_generator = RequestGeneratorRegistry.get(
             self._config.request_generator_config.get_type(),
             self._config.request_generator_config,
+            self._config,
         )
         self._scheduler = GlobalSchedulerRegistry.get(
             self._config.cluster_config.global_scheduler_config.get_type(),
@@ -61,6 +62,14 @@ class Simulator:
         logger.info(
             f"Starting simulation with cluster: {self._cluster} and {len(self._event_queue)} requests"
         )
+
+        # ---- Create the file to log time to tokens ----
+        time_to_tokens_file = f"{self._config.metrics_config.output_dir}/time_to_tokens.csv"
+        os.makedirs(os.path.dirname(time_to_tokens_file), exist_ok=True)
+        with open(time_to_tokens_file, "w") as f:
+            f.write("request_id,TPOP,time_to_token_90_precentile,time_to_token_95_precentile,time_to_token_99_precentile,e2e_time\n")
+        print(f"Time to tokens file created: {time_to_tokens_file}")
+        # ---- Create the file to log time to tokens ----
 
         while self._event_queue and not self._terminate:
             _, event = heapq.heappop(self._event_queue)

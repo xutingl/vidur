@@ -271,6 +271,10 @@ class BaseReplicaSchedulerConfig(BasePolyConfig):
         default=None,
         metadata={"help": "Number of blocks."},
     )
+    enable_priority_queue: bool = field(
+        default=False,
+        metadata={"help": "Enable priority queue."},
+    )
 
 
 @dataclass

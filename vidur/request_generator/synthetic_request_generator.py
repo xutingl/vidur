@@ -1,6 +1,6 @@
 from typing import List
 
-from vidur.config import SyntheticRequestGeneratorConfig
+from vidur.config import SyntheticRequestGeneratorConfig, SimulationConfig
 from vidur.entities import Request
 from vidur.request_generator.base_request_generator import BaseRequestGenerator
 from vidur.request_generator.request_interval_generator_registry import (
@@ -15,8 +15,9 @@ from vidur.utils.random import set_seeds
 
 class SyntheticRequestGenerator(BaseRequestGenerator):
 
-    def __init__(self, config: SyntheticRequestGeneratorConfig):
+    def __init__(self, config: SyntheticRequestGeneratorConfig, simulation_config: SimulationConfig):
         super().__init__(config)
+        self.simulation_config: SimulationConfig = simulation_config
 
         self.request_length_generator = RequestLengthGeneratorRegistry.get(
             self.config.length_generator_config.get_type(),
@@ -47,6 +48,7 @@ class SyntheticRequestGenerator(BaseRequestGenerator):
             arrived_at=arrived_at,
             num_prefill_tokens=int(prefill_tokens),
             num_decode_tokens=int(decode_tokens),
+            config = self.simulation_config
         )
 
     def _generate_requests(self) -> List[Request]:

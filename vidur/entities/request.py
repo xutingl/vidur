@@ -1,7 +1,10 @@
-from typing import Tuple
+from typing import Tuple, List
 
 from vidur.entities.base_entity import BaseEntity
 from vidur.logger import init_logger
+from vidur.config import SimulationConfig
+
+import numpy as np
 
 logger = init_logger(__name__)
 
@@ -31,13 +34,18 @@ class Request(BaseEntity):
         arrived_at: float,
         num_prefill_tokens: int,
         num_decode_tokens: int,
+        config: SimulationConfig,
         num_processed_tokens: int = 0,
     ):
+        self._config: SimulationConfig = config
         self._id = Request.generate_id()
         self._arrived_at = arrived_at
         self._num_prefill_tokens = num_prefill_tokens
         self._num_decode_tokens = num_decode_tokens
         self._num_processed_tokens = num_processed_tokens
+        self._num_cur_generated_tokens: int = 0 # Number of tokens generated so far
+
+        self._prev_token_generated_at: float = arrived_at # Time at which the previous token was generated
 
         self._scheduled_at = 0
         self._execution_time = 0
@@ -58,6 +66,14 @@ class Request(BaseEntity):
         self._is_prefill_complete = False
 
         self._num_restarts = 0
+
+        self.time_to_generate_tokens: List[float] = [] # Store the time taken to generate each token
+
+        self.TPOT: float = 0 # the average time taken to generate a token for each request (except for the first token)
+        self.time_to_token_90_precentile: float = 0 # the 90% precentile of the time taken to generate a token (except for the first token)
+        self.time_to_token_95_precentile: float = 0
+        self.time_to_token_99_precentile: float = 0
+
 
     @property
     def size(self) -> Tuple[int, int]:
@@ -227,6 +243,10 @@ class Request(BaseEntity):
         self._num_processed_tokens += num_tokens_processed
         self._latest_iteration_completed_at = time
 
+        time_to_generate_token = time - self._prev_token_generated_at
+        self.time_to_generate_tokens.append(time_to_generate_token)
+        self._prev_token_generated_at = time
+
         assert self._num_processed_tokens <= self.total_tokens
 
         if self._num_processed_tokens == self._num_prefill_tokens:
@@ -245,6 +265,16 @@ class Request(BaseEntity):
             self._completed_at = time
             self._completed = True
             logger.debug(f"Request {self._id} completed at {self._completed_at}")
+
+            self.TPOT = np.mean(self.time_to_generate_tokens[1:])
+            self.time_to_token_90_precentile = np.percentile(self.time_to_generate_tokens[1:], 90)
+            self.time_to_token_95_precentile = np.percentile(self.time_to_generate_tokens[1:], 95)
+            self.time_to_token_99_precentile = np.percentile(self.time_to_generate_tokens[1:], 99)
+
+            time_to_tokens_file = f"{self._config.metrics_config.output_dir}/time_to_tokens.csv"
+            # Append to this file
+            with open(time_to_tokens_file, "a") as f:
+                f.write(f"{self._id},{self.TPOT},{self.time_to_token_90_precentile},{self.time_to_token_95_precentile},{self.time_to_token_99_precentile},{self.completed_at - self.arrived_at}\n")
 
     def on_batch_stage_schedule(
         self,
@@ -289,6 +319,10 @@ class Request(BaseEntity):
             "latest_iteration_scheduled_at": self._latest_iteration_scheduled_at,
             "latest_iteration_completed_at": self._latest_iteration_completed_at,
             "num_restarts": self._num_restarts,
+            "TPOT": self.TPOT,
+            "time_to_token_90_precentile": self.time_to_token_90_precentile,
+            "time_to_token_95_precentile": self.time_to_token_95_precentile,
+            "time_to_token_99_precentile": self.time_to_token_99_precentile,
         }
 
     def restart(self):
